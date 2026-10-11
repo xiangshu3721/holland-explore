@@ -32,7 +32,7 @@ button { font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: tra
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px 18px; margin: 0 0 16px; }
 .intro { display: grid; gap: 4px; }
 .intro-hex { display: flex; justify-content: center; }
-.deco-hex { width: 150px; height: auto; opacity: .95; }
+.deco-hex { width: 160px; height: auto; opacity: .95; }
 .intro-text p { margin: 4px 0; }
 .intro-text .lead { font-weight: 700; color: var(--navy); font-size: 17px; margin-bottom: 8px; }
 .intro-text ul { list-style: none; margin: 0 0 10px; padding: 0; }
@@ -81,7 +81,7 @@ button { font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: tra
 .qtext { margin: 0; color: var(--navy); font-size: clamp(20px, 6vw, 25px); line-height: 1.55; font-weight: 800; }
 .opts { display: grid; gap: 10px; margin-top: 18px; }
 .opt { display: flex; align-items: center; gap: 14px; min-height: 54px; padding: 0 18px; border: 1.5px solid var(--line); border-radius: 14px; background: #fff; color: var(--ink); font-size: 16.5px; font-weight: 600; text-align: left; transition: border-color .15s, background .15s; }
-.opt:hover { border-color: #c9bda6; }
+@media (hover: hover) { .opt:hover { border-color: #c9bda6; } }
 .opt.on { border-color: var(--navy); background: var(--navy); color: #fff; }
 .dots { display: inline-flex; gap: 4px; flex: 0 0 auto; }
 .dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--red); }
@@ -217,7 +217,7 @@ textarea:focus, .exq input:focus { border-color: var(--navy); }
 .bottom-arc svg { width: 100%; height: 100%; display: block; }
 
 /* 预览层 & toast */
-.overlay { position: fixed; inset: 0; z-index: 50; background: rgba(20,24,40,.82); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.overlay { position: fixed; inset: 0; z-index: 50; background: rgba(20,24,40,.94); display: flex; align-items: center; justify-content: center; padding: 16px; }
 .ov-box { width: 100%; max-width: 480px; max-height: 100%; display: flex; flex-direction: column; gap: 12px; }
 .ov-tip { margin: 0; text-align: center; color: #fff; font-weight: 700; }
 .ov-img { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; border-radius: 12px; background: #fff; max-height: 72vh; }
@@ -227,7 +227,7 @@ textarea:focus, .exq input:focus { border-color: var(--navy); }
 @media (min-width: 900px) {
   .view { padding-top: 48px; }
   .intro { grid-template-columns: 190px 1fr; align-items: center; gap: 18px; padding: 26px 28px; }
-  .deco-hex { width: 180px; }
+  .deco-hex { width: 190px; }
   .dimcards.two, .env { grid-template-columns: 1fr 1fr; }
   .lcards { grid-template-columns: 1fr 1fr; }
   .rsec { padding: 24px 28px 18px; }
