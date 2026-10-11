@@ -8,6 +8,8 @@
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.7; overflow-x: hidden; }
 body.noscroll { overflow: hidden; }
+/* 移动端输入框字号必须 ≥16px：iOS Safari / 微信在字号 <16px 的输入框聚焦时会自动放大页面 */
+input, textarea, select { font-size: 16px; }
 button { font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
 .app { position: relative; min-height: 100vh; padding-bottom: 96px; }
@@ -94,7 +96,7 @@ button { font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: tra
 .exq h3 { display: flex; gap: 10px; margin: 0 0 12px; font-size: 16.5px; line-height: 1.55; color: var(--navy); }
 .exq h3 em { font-style: normal; font-size: 12px; color: var(--red); font-weight: 600; white-space: nowrap; align-self: flex-start; margin-top: 2px; }
 .qn { flex: 0 0 26px; height: 26px; border-radius: 50%; background: var(--red); color: #fff; font-size: 14px; display: grid; place-items: center; margin-top: 1px; }
-textarea, .exq input { width: 100%; border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; font: inherit; font-size: 15.5px; color: var(--ink); background: #fff; outline: none; resize: vertical; }
+textarea, .exq input { width: 100%; border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; font: inherit; font-size: 16px; line-height: 1.6; color: var(--ink); background: #fff; outline: none; resize: vertical; }
 .exq input { margin-top: 10px; height: 46px; }
 textarea:focus, .exq input:focus { border-color: var(--navy); }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
