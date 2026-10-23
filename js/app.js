@@ -48,7 +48,8 @@
   }
   function chip(o) { return '<button type="button" class="chip-btn" aria-pressed="false">' + esc(o) + "</button>"; }
 
-  function cleanNick(s) { return String(s || "").replace(/[\u0000-\u001f<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 12); }
+  function cleanNick(s) { return window.HollandCloudPayload.hollandNickname(s); }
+  function phoneNick(s) { return window.HollandCloudPayload.phoneNickname(s); }
   function refreshHome() {
     var n = get(K_NICK) || "";
     if (!$("nick").value) $("nick").value = n;
@@ -61,10 +62,13 @@
     show("v-home");
   }
   function nickState() {
-    var v = cleanNick($("nick").value);
-    $("btn-start").disabled = !v; $("btn-resume").disabled = !v;
-    $("nick-hint").textContent = v ? "" : C.nickHint;
-    return v;
+    var raw = $("nick").value;
+    var v = cleanNick(raw);
+    var phone = phoneNick(raw) || phoneNick(v);
+    var ok = !!v && !phone;
+    $("btn-start").disabled = !ok; $("btn-resume").disabled = !ok;
+    $("nick-hint").textContent = phone ? C.nickPhone : v ? "" : C.nickHint;
+    return ok ? v : "";
   }
   function saveNick() { var v = nickState(); if (v) set(K_NICK, v); return v; }
 
@@ -142,7 +146,9 @@
   function submit() {
     collectExplore();
     var result = E.compute(prog.answers, prog.times);
-    var rec = { id: "h" + Date.now().toString(36), t: Date.now(), nick: get(K_NICK) || "我", result: result, explore: prog.explore };
+    var answers = {};
+    Q.forEach(function (q) { answers[q.id] = prog.answers[q.id]; });
+    var rec = { id: "h" + Date.now().toString(36), t: Date.now(), nick: get(K_NICK) || "我", result: result, answers: answers, explore: prog.explore };
     var hist = get(K_HIST) || []; hist.unshift(rec); set(K_HIST, hist.slice(0, 30));
     del(K_PROG); prog = null;
     openResult(rec);
@@ -150,6 +156,7 @@
   function openResult(rec) {
     current = rec; ui = {};
     renderResult(); show("v-result");
+    if (window.HollandCloud) window.HollandCloud.mount($("share-slot"), { nickname: rec.nick, answers: rec.answers || null, completedAt: rec.t });
   }
   function renderResult() {
     $("report").innerHTML = RD.report(RP.build(current, ui));

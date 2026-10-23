@@ -198,6 +198,10 @@ textarea:focus, .exq input:focus { border-color: var(--navy); }
 .r-foot p { margin: 0; }
 .actions { display: grid; gap: 10px; margin: 8px 0 0; }
 .actions-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.hc-share { display: grid; gap: 6px; }
+.hc-note { margin: 0; text-align: center; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.hc-note.warn { color: var(--red); }
+.hc-share .hc-retry { margin: 0 auto; }
 
 /* 历史 */
 .h2 { text-align: center; font-size: 34px; font-weight: 900; margin: 24px 0 4px; }
