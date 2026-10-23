@@ -83,6 +83,7 @@
       nickname: input.nickname,
       answers: input.answers,
       completedAt: input.completedAt,
+      rushed: input.rushed === true,
       orderKey: key,
       saving: !!(previous && previous.saving),
       note: previous ? previous.note : "",
@@ -156,17 +157,25 @@
 
   function ensurePending(cloud, nick) {
     var found = pendingItem(current.orderKey);
-    if (found) return found;
-    var ids = C.createSubmissionIds();
-    if (ids.linkSecret === ids.ownerToken) ids.ownerToken = C.createSubmissionIds().ownerToken;
+    var ids = found;
+    if (!found) {
+      ids = C.createSubmissionIds();
+      if (ids.linkSecret === ids.ownerToken) ids.ownerToken = C.createSubmissionIds().ownerToken;
+    }
     var payload = P.buildHollandResult({
       nickname: nick,
       answers: current.answers,
+      rushed: current.rushed === true,
       reportId: ids.reportId,
       clientSubmissionId: ids.clientSubmissionId,
       completedAt: completedAtOf(current.completedAt)
     });
     if (!payload) return null;
+    if (found) {
+      found.payload = payload;
+      cloud.upsertPending(found);
+      return found;
+    }
     var item = {
       reportId: ids.reportId,
       clientSubmissionId: ids.clientSubmissionId,

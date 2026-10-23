@@ -156,7 +156,9 @@
   function openResult(rec) {
     current = rec; ui = {};
     renderResult(); show("v-result");
-    if (window.HollandCloud) window.HollandCloud.mount($("share-slot"), { nickname: rec.nick, answers: rec.answers || null, completedAt: rec.t });
+    var flags = rec.result && rec.result.quality;
+    var rushed = !!(flags && flags.indexOf && flags.indexOf("FAST_RESPONSE") >= 0);
+    if (window.HollandCloud) window.HollandCloud.mount($("share-slot"), { nickname: rec.nick, answers: rec.answers || null, completedAt: rec.t, rushed: rushed });
   }
   function renderResult() {
     $("report").innerHTML = RD.report(RP.build(current, ui));

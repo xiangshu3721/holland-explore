@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createContext, runInContext } from "node:vm";
 import test from "node:test";
+import { emptyExplore, hollandBodyParts, HOLLAND_READER_GAP, HOLLAND_SCREEN } from "../test/vendor/holland-score.mjs";
+import { validateHollandResult } from "../test/vendor/holland-validate.mjs";
 
 function loadHolland(extra) {
   const sandbox = {
@@ -40,6 +42,7 @@ const page = loadHolland();
 const P = page.HollandCloudPayload;
 const E = page.HollandEngine;
 const Q = page.HOLLAND_QUESTIONS;
+const EMPTY = { q1: "", q2: [], q2other: "", q3: [] };
 
 function base(extra) {
   return {
@@ -57,8 +60,16 @@ function pattern(seed) {
   return map;
 }
 
+function listOf(map) {
+  return Q.map((q) => map[q.id]);
+}
+
+function plain(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
 function same(actual, expected) {
-  assert.equal(JSON.stringify(actual), JSON.stringify(expected));
+  assert.deepEqual(plain(actual), plain(expected));
 }
 
 function keysOf(value, found = []) {
@@ -70,6 +81,31 @@ function keysOf(value, found = []) {
   }
   if (Array.isArray(value)) value.forEach((item) => keysOf(item, found));
   return found;
+}
+
+function assertVendor(report, answers, rushed) {
+  const parts = hollandBodyParts(answers, emptyExplore(), rushed);
+  same(report.dimensions, parts.dimensions);
+  same(report.result, parts.result);
+  same(report.interpretation, parts.interpretation);
+  same(report.recommendations, parts.recommendations);
+  same(report.reportContent, parts.reportContent);
+  same(report.extensionData.score, parts.score);
+  same(report.extensionData.openText, parts.openText);
+  same(report.reportContent.viewModel.explore, EMPTY);
+  same(report.extensionData.openText, EMPTY);
+  same(report.extensionData.quality, { rushed });
+  same(report.reportContent.viewModel.rushed, rushed);
+  same(report.result.flags, parts.score.quality);
+  assert.equal(report.result.headline, `核心兴趣组合：${parts.score.holland_code}`);
+  assert.equal(report.result.headline.includes("你的"), false);
+  assert.equal(validateHollandResult(report).join(" | "), "");
+  assert.equal(JSON.stringify(report).includes("median_ms"), false);
+  assert.equal(JSON.stringify(report).includes("FAST_RESPONSE"), false);
+  assert.equal(report.reportContent.textFallback.includes(HOLLAND_SCREEN), true);
+  assert.equal(report.recommendations[1].text, HOLLAND_READER_GAP);
+  assert.equal(P.SCREEN, HOLLAND_SCREEN);
+  assert.equal(P.READER_GAP, HOLLAND_READER_GAP);
 }
 
 test("称呼取前 12 个字，手机号和坏作答不上传", () => {
@@ -96,12 +132,12 @@ test("称呼取前 12 个字，手机号和坏作答不上传", () => {
   assert.equal(P.buildHollandResult(base({ answers, result: tampered })), null);
 });
 
-test("题库顺序数组与作答映射等价，分数跟引擎，开放题不进云端", () => {
+test("题库顺序数组与作答映射等价，正文对齐 hollandBodyParts，开放题是空对象", () => {
   const map = pattern(1);
   map.Q01 = 5;
   map.q1 = "SECRET_OPEN_9f3c 我小时候最投入的是修收音机";
   map.q2other = "SECRET_OTHER_9f3c";
-  const list = Q.map((q) => map[q.id]);
+  const list = listOf(map);
   const computed = E.compute(map);
   const shared = {
     q1: "SECRET_OPEN_9f3c 我小时候最投入的是修收音机",
@@ -118,6 +154,7 @@ test("题库顺序数组与作答映射等价，分数跟引擎，开放题不�
     nickname: `${"林深".repeat(6)}多余`,
     answers: map,
     result: computed,
+    rushed: false,
     ...shared,
   }));
   const fromList = P.buildHollandResult(base({ nickname: "林深".repeat(6), answers: list }));
@@ -137,9 +174,6 @@ test("题库顺序数组与作答映射等价，分数跟引擎，开放题不�
   same(fromMap.extensionData.score.structure, computed.structure);
   same(fromMap.extensionData.score.bands, computed.bands);
   same(fromMap.extensionData.score.ranking, computed.ranking);
-  same(fromMap.reportContent.viewModel.scores, computed.scores);
-  same(fromMap.reportContent.viewModel.bands, computed.bands);
-  same(fromMap.reportContent.viewModel.ranking, computed.ranking);
   same(fromMap.extensionData.answers, list);
   same(fromMap.reportContent.viewModel.answers, list);
   assert.equal(fromMap.extensionData.answers.length, 60);
@@ -149,11 +183,11 @@ test("题库顺序数组与作答映射等价，分数跟引擎，开放题不�
   same(fromList.extensionData.score, fromMap.extensionData.score);
   same(fromMap.dimensions.map((item) => item.id), ["R", "I", "A", "S", "E", "C"]);
   same(fromMap.dimensions.map((item) => item.score), ["R", "I", "A", "S", "E", "C"].map((id) => computed.scores[id]));
-  assert.equal(fromMap.dimensions.every((item) => item.score >= 0 && item.score <= 100), true);
+  same(fromMap.dimensions.map((item) => item.raw), ["R", "I", "A", "S", "E", "C"].map((id) => fromMap.extensionData.score.raw[id]));
+  assert.equal(fromMap.dimensions.every((item) => item.raw >= 10 && item.raw <= 50 && item.narrative), true);
   assert.equal(fromMap.reportContent.format, "view-model+sections");
   assert.equal(fromMap.reportContent.textFallback, fromMap.reportContent.sections.map((section) => section.x).join(""));
   assert.equal(fromMap.reportContent.textFallback.includes(computed.holland_code), true);
-  assert.equal(fromMap.reportContent.textFallback.includes(P.SCREEN), true);
   for (const id of ["R", "I", "A", "S", "E", "C"]) {
     assert.equal(fromMap.reportContent.textFallback.includes(String(computed.scores[id])), true);
   }
@@ -162,11 +196,13 @@ test("题库顺序数组与作答映射等价，分数跟引擎，开放题不�
   assert.equal(fromMap.source.path, "index.html");
   assert.equal(fromMap.source.pageUrl, "https://xiangshu3721.github.io/holland-explore/");
   assert.equal(fromMap.source.resultKitId, "holland");
-  assert.equal(fromMap.source.localKey, "holland_explore.history");
+  assert.equal(fromMap.source.localKey, "holland-explore");
   same(fromMap.extensionData.consent.scopes, ["store", "share_link", "mentor_read"]);
   assert.equal(fromMap.extensionData.consent.version, "consent-assessment-holland-1");
   assert.equal(fromMap.extensionData.compat.level, "partial");
   assert.equal(fromMap.recommendations[0].title, null);
+  assertVendor(fromMap, list, false);
+  assertVendor(fromList, list, false);
   assert.equal(packed.includes("SECRET_OPEN_9f3c"), false);
   assert.equal(packed.includes("SECRET_OTHER_9f3c"), false);
   assert.equal(packed.includes("13800000000"), false);
@@ -177,7 +213,8 @@ test("题库顺序数组与作答映射等价，分数跟引擎，开放题不�
   assert.equal(packed.includes(Q[0].text), false);
   assert.equal(packed.includes("学一种东西"), false);
   assert.equal(packed.includes("专业选择"), false);
-  for (const key of ["q1", "q2", "q2other", "q3", "explore", "phone", "wechat", "wechatQr", "times", "median_ms", "quality", "profile", "openAnswers"]) {
+  assert.equal(packed.includes("修收音机"), false);
+  for (const key of ["phone", "wechat", "wechatQr", "times", "median_ms", "profile", "openAnswers", "fives"]) {
     assert.equal(keysOf(fromMap).includes(key), false, key);
   }
   same(Object.keys(fromMap).sort(), [
@@ -185,24 +222,39 @@ test("题库顺序数组与作答映射等价，分数跟引擎，开放题不�
     "extensionData", "interpretation", "nickname", "recommendations", "reportContent",
     "reportId", "result", "schemaVersion", "source",
   ].sort());
-  same(Object.keys(fromMap.extensionData).sort(), ["answers", "compat", "consent", "score"]);
+  same(Object.keys(fromMap.extensionData).sort(), ["answers", "compat", "consent", "openText", "quality", "score"]);
   same(Object.keys(fromMap.extensionData.score).sort(), [
-    "bands", "holland_code", "ranking", "scores", "structure", "top_dimensions", "version",
+    "bands", "holland_code", "quality", "ranking", "raw", "scores", "structure", "top_dimensions", "version",
   ]);
+  same(Object.keys(fromMap.reportContent.viewModel.explore).sort(), ["q1", "q2", "q2other", "q3"]);
+  same(Object.keys(fromMap.extensionData.openText).sort(), ["q1", "q2", "q2other", "q3"]);
 });
 
-test("均匀作答的质量标记留在本机，云端报告仍然可读", () => {
+test("FAST_RESPONSE 和 median_ms 不进云端，质量标记留在 score.quality，本机报告仍显示开放题", () => {
   const map = {};
   Q.forEach((q) => { map[q.id] = 3; });
-  const computed = E.compute(map, { Q01: 100 });
+  const times = {};
+  Q.slice(0, 30).forEach((q) => { times[q.id] = 100; });
+  const computed = E.compute(map, times);
+  assert.equal(computed.quality.includes("FAST_RESPONSE"), true);
   assert.equal(computed.quality.includes("LOW_VARIANCE"), true);
-  const report = P.buildHollandResult(base({ answers: map, result: computed, times: { Q01: 100 } }));
+  assert.equal(computed.quality.includes("MANY_UNSURE"), true);
+  assert.equal(computed.median_ms, 100);
+  const report = P.buildHollandResult(base({
+    answers: map,
+    result: computed,
+    times,
+    median_ms: computed.median_ms,
+    explore: { q1: "SECRET_OPEN_9f3c", q2: ["学一种东西"], q2other: "SECRET_OTHER_9f3c", q3: ["专业选择"] },
+  }));
   const packed = JSON.stringify(report);
-  assert.equal(report.extensionData.score.holland_code, computed.holland_code);
-  assert.equal(packed.includes("LOW_VARIANCE"), false);
-  assert.equal(packed.includes("MANY_UNSURE"), false);
+  assertVendor(report, listOf(map), true);
+  same(report.extensionData.score.quality, ["LOW_VARIANCE", "MANY_UNSURE"]);
+  same(report.result.flags, ["LOW_VARIANCE", "MANY_UNSURE"]);
   assert.equal(packed.includes("FAST_RESPONSE"), false);
   assert.equal(packed.includes("median_ms"), false);
+  assert.equal(packed.includes("SECRET_OPEN_9f3c"), false);
+  assert.equal(packed.includes("SECRET_OTHER_9f3c"), false);
   const quiet = page.HollandReport.build({
     nick: "林深",
     t: Date.parse("2026-10-23T15:04:05+08:00"),
@@ -218,14 +270,16 @@ test("均匀作答的质量标记留在本机，云端报告仍然可读", () =>
     nick: "林深",
     t: Date.parse("2026-10-23T15:04:05+08:00"),
     result: computed,
-    explore: { q1: "SECRET_OPEN_9f3c", q2: [], q2other: "SECRET_OTHER_9f3c", q3: [] },
+    explore: { q1: "SECRET_OPEN_9f3c", q2: ["学一种东西"], q2other: "SECRET_OTHER_9f3c", q3: ["专业选择"] },
   }, {});
-  assert.equal(JSON.stringify(echoed).includes("SECRET_OPEN_9f3c"), true);
-  assert.equal(JSON.stringify(echoed).includes("SECRET_OTHER_9f3c"), true);
+  const local = JSON.stringify(echoed);
+  assert.equal(local.includes("SECRET_OPEN_9f3c"), true);
+  assert.equal(local.includes("SECRET_OTHER_9f3c"), true);
+  assert.equal(local.includes("你的核心兴趣组合："), true);
   assert.equal(packed.includes("SECRET_OPEN_9f3c"), false);
 });
 
-test("分享短链和提交体按 ECR / 寻根的公开地址，源码不带密钥和二维码", () => {
+test("分享短链和提交体按公开地址，源码不带密钥和二维码", () => {
   const client = page.HollandCloudClient;
   const ids = client.createSubmissionIds();
   const url = client.buildShareUrl(page.HOLLAND_CLOUD_CONFIG.reportPageBase, ids.reportId, ids.linkSecret);
