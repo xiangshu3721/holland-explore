@@ -104,7 +104,12 @@ test("结果页自动提交一次，分享结果只复制短链", async () => {
     }
     return { status: 404, json: async () => ({}) };
   };
-  const input = { nickname: "  小林  ", answers: answers(sandbox, 0), completedAt: Date.parse("2026-10-23T15:04:05+08:00") };
+  const input = {
+    nickname: "  小林  ",
+    answers: answers(sandbox, 0),
+    completedAt: Date.parse("2026-10-23T15:04:05+08:00"),
+    explore: { q1: "SECRET_OPEN_9f3c 不想上传", q2: ["学一种东西"], q2other: "SECRET_OTHER_9f3c", q3: ["专业选择"] },
+  };
   sandbox.HollandCloud.mount(slot, input);
   assert.match(slot.innerHTML, /分享结果/);
   assert.match(slot.innerHTML, /链接生成中/);
@@ -115,8 +120,15 @@ test("结果页自动提交一次，分享结果只复制短链", async () => {
   assert.equal(calls[0].body.result.assessmentId, "holland");
   assert.equal(calls[0].body.result.nickname, "小林");
   assert.equal(calls[0].body.result.extensionData.answers.length, 60);
-  assert.equal(JSON.stringify(calls[0].body).includes("SECRET_OPEN_9f3c"), false);
-  assert.equal(JSON.stringify(calls[0].body).includes("SECRET_OTHER_9f3c"), false);
+  const posted = JSON.stringify(calls[0].body);
+  assert.equal(posted.includes("SECRET_OPEN_9f3c"), false);
+  assert.equal(posted.includes("SECRET_OTHER_9f3c"), false);
+  assert.equal(posted.includes("学一种东西"), false);
+  assert.equal(posted.includes("专业选择"), false);
+  assert.deepEqual(calls[0].body.result.extensionData.openText, { q1: "", q2: [], q2other: "", q3: [] });
+  assert.deepEqual(calls[0].body.result.reportContent.viewModel.explore, { q1: "", q2: [], q2other: "", q3: [] });
+  assert.equal(calls[0].body.result.reportContent.viewModel.rushed, false);
+  assert.deepEqual(calls[0].body.result.extensionData.quality, { rushed: false });
   assert.match(calls[0].body.linkSecret, /^[A-Za-z0-9_-]{16}$/);
   assert.match(calls[0].body.result.reportId, /^rpt_[A-Za-z0-9_-]{11}$/);
   sandbox.HollandCloud.mount(slot, input);
